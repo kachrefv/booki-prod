@@ -1,0 +1,43 @@
+{% extends "pretixcontrol/event/base.html" %}
+{% load i18n %}
+{% load compress %}
+{% load static %}
+{% load bootstrap3 %}
+{% load eventurl %}
+{% block title %}{% trans "Manual Seats" %}{% endblock %}
+{% block content %}
+    <h1>{% trans "Manual Seats" %} 💺</h1>
+    {% if seatingplans|length > 0 %}
+        <p>
+            {% blocktrans trimmed count seatingplans|length as counter %}
+                You have imported only one seating plan.
+            {% plural %}
+                You have imported {{ counter }} seating plans.
+            {% endblocktrans %}
+        </p><br>
+        <form method="post" class="form-horizontal">{% csrf_token %}
+            <fieldset>
+                <legend>{% trans "Seating plan selection" %}</legend>
+                {% bootstrap_field form.seatingplan layout="control" %}
+                {% bootstrap_field form.advanced layout="control" %}
+                {% bootstrap_field form.users_edit_seatingplan layout="control" %}
+            </fieldset>
+            <div class="form-group submit-group">
+                <button type="submit" class="btn btn-primary btn-save">
+                    <i class="fa fa-save"></i> {% trans "Save" %}
+                </button>
+            </div>
+        </form>
+    {% else %}
+        <div class="alert alert-info">
+            <p>
+                {% trans "There are currently no seating plans configured on your organizer account." %}
+            </p>
+            <p>
+                <a href="{% url "plugins:pretix_manualseats:index" organizer=request.organizer.slug %}" class="btn btn-default" target="_blank">
+                    {% trans "Manage seating plans" %}
+                </a>
+            </p>
+        </div>
+    {% endif %}
+{% endblock %}

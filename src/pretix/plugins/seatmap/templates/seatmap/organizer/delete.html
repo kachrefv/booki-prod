@@ -1,0 +1,29 @@
+{% extends "pretixcontrol/organizers/base.html" %}
+{% load i18n %}
+{% load bootstrap3 %}
+{% block title %}{% trans "Delete seating plan" %}{% endblock %}
+{% block content %}
+	<h1>{% trans "Delete seating plan" %}: {{ seatingplan.name }} <small>(ID: <code>{{ seatingplan.id }}</code>)</small></h1>
+	<form action="" method="post" class="form-horizontal">
+		{% csrf_token %}
+        {% if inuse %}
+            <div class="alert alert-danger">
+                <p>{% blocktrans trimmed %}
+                    You cannot delete the seating plan because it is used in at least one of your events.
+                {% endblocktrans %}</p>
+            </div>
+        {% else %}
+            <p>{% blocktrans trimmed with name=seatingplan.name %}
+                Are you sure you want to delete the seating plan „{{name}}“?
+            {% endblocktrans %}</p>
+        {% endif %}
+		<div class="form-group submit-group">
+            <a href="{% url "plugins:pretix_manualseats:organizer.index" organizer=request.organizer.slug %}" class="btn btn-default btn-cancel">
+                {% trans "Cancel" %}
+            </a>
+            <button type="submit" class="btn btn-danger btn-save" {% if inuse %}disabled{% endif %}>
+                <i class="fa fa-trash"></i>{% trans "Delete" %}
+            </button>
+		</div>
+	</form>
+{% endblock %}

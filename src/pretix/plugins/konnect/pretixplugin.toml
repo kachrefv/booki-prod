@@ -1,0 +1,5 @@
+[plugin]
+package = "konnect"
+modules = [ "pretixkonnect" ]
+marketplace_name = "konnect"
+

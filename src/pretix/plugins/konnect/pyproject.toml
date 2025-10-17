@@ -1,0 +1,42 @@
+[project]
+name = "konnect"
+dynamic = ["version"]
+description = "A plugin for Tunisian payment methods"
+readme = "README.rst"
+license = {text = "Apache"}
+keywords = ["pretix"]
+authors = [
+    {name = "Ala", email = "charfi.ala10@gmail.com"},
+]
+maintainers = [
+    {name = "Ala", email = "charfi.ala10@gmail.com"},
+]
+
+dependencies = [
+]
+
+[project.entry-points."pretix.plugin"]
+pretixkonnect = "pretixkonnect:PretixPluginMeta"
+
+[project.entry-points."distutils.commands"]
+build = "pretix_plugin_build.build:CustomBuild"
+
+[build-system]
+requires = [
+    "setuptools",
+    "pretix-plugin-build",
+]
+
+[project.urls]
+homepage = "https://github.com/charfiala/e-tickets"
+repository = "https://github.com/charfiala/e-tickets"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.dynamic]
+version = {attr = "pretixkonnect.__version__"}
+
+[tool.setuptools.packages.find]
+include = ["pretix*"]
+namespaces = false

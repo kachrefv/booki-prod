@@ -1,0 +1,17 @@
+Metadata-Version: 2.1
+Name: pretix-plugin-build
+Version: 1.0.1
+Summary: Build toolchain for pretix plugins
+Author-email: pretix team <support@pretix.eu>
+Maintainer-email: pretix team <support@pretix.eu>
+License: Apache License
+Project-URL: homepage, https://github.com/pretix/pretix-plugin-build
+Project-URL: repository, https://github.com/pretix/pretix-plugin-build.git
+Keywords: pretix
+Description-Content-Type: text/x-rst
+Requires-Dist: django
+
+pretix-plugin-build
+"""""""""""""""""""
+
+Build toolchain helpers for pretix plugins.

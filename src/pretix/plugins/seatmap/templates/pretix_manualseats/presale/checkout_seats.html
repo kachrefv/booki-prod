@@ -1,0 +1,347 @@
+{% extends "pretixpresale/event/base.html" %}
+{% load i18n %}
+{% load static %}
+
+{% block title %}{% trans "Choose your seats" %}{% endblock %}
+
+{% block content %}
+    <link rel="stylesheet" type="text/css" href="{% static 'pretix_manualseats/seatmap.css' %}?v=2">
+
+    <h1>{% trans "Choose your seats" %}</h1>
+    <p>
+        {% blocktrans trimmed %}
+            Please select a seat for each of the tickets in your cart.
+        {% endblocktrans %}
+    </p>
+
+    <div id="seat-selection-app" class="mt-4">
+        <div id="seat-selection-notifications" class="mb-3"></div>
+        <div class="row">
+            <div class="col-lg-4 col-md-5 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">{% trans "Your Tickets" %}</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted"><small>{% trans "Select a ticket below, then choose an available seat from the map." %}</small></p>
+                        <div id="positions-list" class="list-group">
+                            <!-- Ticket items will be injected by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-8 col-md-7">
+                <div id="seatmap-container-wrapper" class="card">
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <div id="seatmap-legend" class="seatmap-legend"></div>
+                            </div>
+                        </div>
+                        <div class="seating-plan-container">
+                            <svg id="seatmap-svg" style="width: 100%; height: auto; display: block;"></svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <form id="seats-form" method="post" action="{% url 'presale:event.checkout' event=request.event.slug organizer=request.event.organizer.slug step='seats' %}">
+            {% csrf_token %}
+            <div class="action-buttons mt-4">
+                <button id="continue-btn" type="button" class="btn btn-primary btn-lg" disabled>
+                    <i class="fa fa-check mr-2"></i>
+                    {% trans "Continue" %}
+                </button>
+                <a href="{% url 'presale:event.checkout.start' event=request.event.slug organizer=request.event.organizer.slug %}" class="btn btn-outline-secondary btn-lg">
+                    <i class="fa fa-arrow-left mr-2"></i>
+                    {% trans "Back to cart" %}
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <script nonce="{{ csp_nonce }}">
+        document.addEventListener('DOMContentLoaded', function() {
+            const seatsData = {{ seats_json|safe }};
+            const seatingPlan = {{ seating_plan_json|safe }};
+            const seatCategories = {{ seat_categories|safe }};
+            const positionsNeedSeats = {{ positions_need_seats|safe }};
+            const selectUrl = "{{ select_url }}";
+            const seatBgAvailable = getComputedStyle(document.documentElement).getPropertyValue('--seat-bg-available').trim();
+
+            const app = {
+                seats: seatsData,
+                seating_plan: seatingPlan,
+                seat_categories: seatCategories,
+                positions: positionsNeedSeats,
+                seat_assignments: {}, // { position_id: seat_guid }
+                active_position_id: null,
+
+                init: function() {
+                    this.positions.forEach(p => {
+                        if (p.seat) {
+                            this.seat_assignments[p.id] = p.seat;
+                        }
+                    });
+
+                    this.renderPositionsList();
+                    this.renderSeatMap();
+                    this.updateContinueButton();
+                },
+
+                renderPositionsList: function() {
+                    const listElement = document.getElementById('positions-list');
+                    listElement.innerHTML = '';
+                    this.positions.forEach(pos => {
+                        const seat_guid = this.seat_assignments[pos.id];
+                        const seat = seat_guid ? this.seats.find(s => s.guid === seat_guid) : null;
+
+                        const item = document.createElement('a');
+                        item.href = '#';
+                        item.className = 'list-group-item list-group-item-action';
+                        item.dataset.positionId = pos.id;
+
+                        let label = `${pos.item_name}`;
+                        if (pos.variation_name) {
+                            label += ` - ${pos.variation_name}`;
+                        }
+
+                        item.innerHTML = `
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">${label}</h6>
+                                <small class="${seat ? 'text-success' : 'text-danger'}">${seat ? `<i class="fa fa-check-circle"></i>` : `<i class="fa fa-times-circle"></i>`}</small>
+                            </div>
+                            <small id="seat-name-${pos.id}" class="text-muted">
+                                ${seat ? `{% trans "Seat:" %} ${seat.name}` : `{% trans "No seat selected" %}`}
+                            </small>
+                        `;
+
+                        item.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            this.setActivePosition(pos.id);
+                        });
+                        listElement.appendChild(item);
+                    });
+                    if (this.positions.length > 0) {
+                        this.setActivePosition(this.positions[0].id);
+                    }
+                },
+
+                setActivePosition: function(position_id) {
+                    this.active_position_id = position_id;
+                    document.querySelectorAll('#positions-list .list-group-item').forEach(el => {
+                        el.classList.toggle('active', el.dataset.positionId == position_id);
+                    });
+                },
+
+                renderSeatMap: function() {
+                    const svg = document.getElementById('seatmap-svg');
+                    svg.innerHTML = '';
+
+                    const viewBox = `0 0 ${this.seating_plan.size.width} ${this.seating_plan.size.height}`;
+                    svg.setAttribute('viewBox', viewBox);
+                    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+
+                    this.renderLegend();
+
+                    this.seats.forEach(seat => {
+                        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                        g.setAttribute('data-seat-guid', seat.guid);
+                        
+                        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                        circle.setAttribute('cx', seat.x);
+                        circle.setAttribute('cy', seat.y);
+                        circle.setAttribute('r', seat.r || 10);
+                        g.appendChild(circle);
+
+                        this.updateSeatStyle(g, seat);
+
+                        if (this.getSeatStatus(seat) === 'available' || this.getSeatStatus(seat) === 'selected-by-you') {
+                            g.style.cursor = 'pointer';
+                            g.addEventListener('click', () => this.handleSeatClick(seat));
+                        }
+                        svg.appendChild(g);
+                    });
+                },
+                
+                handleSeatClick: function(seat) {
+                    if (!this.active_position_id) {
+                        this.showErrorNotification("{% trans 'Please select a ticket first.' %}");
+                        return;
+                    }
+
+                    const currentAssignmentForSeat = Object.keys(this.seat_assignments).find(pos_id => this.seat_assignments[pos_id] === seat.guid);
+
+                    // If seat is assigned to the active ticket, unassign it.
+                    if (currentAssignmentForSeat == this.active_position_id) {
+                        delete this.seat_assignments[this.active_position_id];
+                    } 
+                    // If seat is available, assign it to the active ticket.
+                    else if (!currentAssignmentForSeat) {
+                         // unassign if another seat was assigned to this position
+                        if(this.seat_assignments[this.active_position_id]){
+                            delete this.seat_assignments[this.active_position_id];
+                        }
+                        this.seat_assignments[this.active_position_id] = seat.guid;
+                    } 
+                    // If seat is taken by another ticket in this selection, show error.
+                    else {
+                        this.showErrorNotification("{% trans 'This seat is already selected for another ticket.' %}");
+                        return;
+                    }
+
+                    this.updateUIAfterSelection();
+                },
+                
+                updateUIAfterSelection: function() {
+                    this.updateSeatDisplay();
+                    this.updatePositionsList();
+                    this.updateContinueButton();
+                },
+
+                updatePositionsList: function() {
+                    this.positions.forEach(pos => {
+                        const seat_guid = this.seat_assignments[pos.id];
+                        const seat = seat_guid ? this.seats.find(s => s.guid === seat_guid) : null;
+                        const nameEl = document.getElementById(`seat-name-${pos.id}`);
+                        const itemEl = document.querySelector(`[data-position-id='${pos.id}']`);
+                        const statusIcon = itemEl.querySelector('small.text-success, small.text-danger');
+
+                        if (seat) {
+                            nameEl.textContent = `{% trans "Seat:" %} ${seat.name}`;
+                            statusIcon.className = 'text-success';
+                            statusIcon.innerHTML = `<i class="fa fa-check-circle"></i>`;
+                        } else {
+                            nameEl.textContent = `{% trans "No seat selected" %}`;
+                            statusIcon.className = 'text-danger';
+                            statusIcon.innerHTML = `<i class="fa fa-times-circle"></i>`;
+                        }
+                    });
+                },
+
+                getSeatStatus: function(seat) {
+                    const assigned_pos_id = Object.keys(this.seat_assignments).find(pos_id => this.seat_assignments[pos_id] === seat.guid);
+                    if (assigned_pos_id) {
+                        return assigned_pos_id == this.active_position_id ? 'selected-by-you-active' : 'selected-by-you';
+                    }
+                    return seat.status;
+                },
+
+                updateSeatStyle: function(group, seat) {
+                    const status = this.getSeatStatus(seat);
+                    group.setAttribute('class', `seat-group ${status}`);
+                    
+                    const circle = group.querySelector('circle');
+                    
+                    if (status.startsWith('selected')) {
+                        circle.style.fill = ''; // Let CSS handle it
+                    } else if (status === 'available') {
+                        circle.style.fill = seat.category_color || seatBgAvailable;
+                    } else {
+                        circle.style.fill = ''; // Let CSS for unavailable/blocked handle it
+                    }
+                },
+
+                updateSeatDisplay: function() {
+                    document.querySelectorAll('#seatmap-svg .seat-group').forEach(group => {
+                        const seatGuid = group.getAttribute('data-seat-guid');
+                        const seat = this.seats.find(s => s.guid === seatGuid);
+                        if (seat) {
+                            this.updateSeatStyle(group, seat);
+                        }
+                    });
+                },
+
+                updateContinueButton: function() {
+                    const btn = document.getElementById('continue-btn');
+                    const allAssigned = this.positions.every(p => this.seat_assignments[p.id]);
+                    btn.disabled = !allAssigned;
+                },
+
+                renderLegend: function() {
+                    const legendContainer = document.getElementById('seatmap-legend');
+                    legendContainer.innerHTML = '';
+                    const createLegendItem = (cssClass, text) => `<div class="legend-item"><div class="seat ${cssClass}"></div><span>${text}</span></div>`;
+                    let legendHtml = createLegendItem('selected-by-you-active', `{% trans "Your active selection" %}`);
+                    legendHtml += createLegendItem('selected-by-you', `{% trans "Your other selections" %}`);
+                    legendHtml += createLegendItem('unavailable', `{% trans "Unavailable" %}`);
+                    if (this.seat_categories && this.seat_categories.length > 0) {
+                        this.seat_categories.forEach(cat => {
+                           legendHtml += `<div class="legend-item"><div class="seat available" style="background-color: ${cat.color}; border-color: ${cat.color};"></div><span>${cat.name}</span></div>`;
+                        });
+                    } else {
+                         legendHtml += createLegendItem('available', `{% trans "Available" %}`);
+                    }
+                    legendContainer.innerHTML = legendHtml;
+                },
+
+                saveSeats: async function() {
+                    const btn = document.getElementById('continue-btn');
+                    if (btn.disabled) return;
+
+                    btn.disabled = true;
+                    btn.innerHTML = '<i class="fa fa-spinner fa-spin mr-2"></i>{% trans "Saving..." %}';
+
+                    try {
+                        const response = await fetch(selectUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': '{{ csrf_token }}',
+                            },
+                            body: JSON.stringify({
+                                'seat_assignments': this.seat_assignments
+                            })
+                        });
+
+                        const data = await response.json();
+
+                        if (response.ok && data.status === 'success') {
+                            window.location.href = data.redirect;
+                        } else {
+                            throw new Error(data.message || '{% trans "An unknown error occurred." %}');
+                        }
+
+                    } catch(error) {
+                        console.error('Failed to save seats:', error);
+                        this.showErrorNotification(error.message);
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fa fa-check mr-2"></i>{% trans "Continue" %}';
+                    }
+                },
+                
+                showErrorNotification: function(message) {
+                    const alertContainer = document.getElementById('seat-selection-notifications');
+                    if (!alertContainer) return;
+                    alertContainer.innerHTML = ''; // Clear previous messages
+
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+                    alertDiv.setAttribute('role', 'alert');
+                    alertDiv.innerHTML = `
+                        ${message}
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    `;
+                    alertContainer.appendChild(alertDiv);
+
+                    setTimeout(() => {
+                        if (alertDiv && alertDiv.parentNode) {
+                            alertDiv.remove();
+                        }
+                    }, 5000);
+                }
+            };
+
+            app.init();
+
+            document.getElementById('continue-btn').addEventListener('click', (e) => {
+                e.preventDefault();
+                app.saveSeats();
+            });
+        });
+    </script>
+{% endblock %}

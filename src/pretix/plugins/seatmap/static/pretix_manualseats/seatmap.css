@@ -1,0 +1,145 @@
+/* static/pretix_manualseats/seatmap.css */
+
+:root {
+    --seat-bg-available: #e9ecef; /* Light gray */
+    --seat-border-available: #ced4da;
+    --seat-bg-selected-active: #ffc107; /* Amber */
+    --seat-border-selected-active: #e0a800;
+    --seat-bg-selected: #007bff; /* Vibrant blue */
+    --seat-border-selected: #0056b3;
+    --seat-bg-unavailable: #495057; /* Dark gray */
+    --seat-border-unavailable: #343a40;
+    --seat-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    --seat-hover-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    --background-color: #f8f9fa;
+    --container-bg: #ffffff;
+}
+
+/* New styles for SVG seat map */
+.seating-plan-container {
+    position: relative;
+    width: 100%;
+    cursor: grab;
+    overflow: hidden; /* Hide parts of svg that overflow */
+    border: 1px solid #ddd;
+    border-radius: 8px;
+}
+
+.seat-group circle {
+    stroke-width: 2px;
+    stroke: transparent;
+    /* transition: fill 0.2s ease, stroke 0.2s ease, r 0.2s ease; */ /* Removed animation */
+}
+
+.seat-group.available circle {
+    /* fill is now set by JS, but we keep the border */
+    stroke: var(--seat-border-available);
+}
+
+/* Add a simple hover effect for available seats */
+.seat-group.available:hover circle {
+    stroke: var(--seat-border-selected-active);
+    stroke-width: 3px;
+}
+
+.seat-group.selected-by-you circle {
+    fill: var(--seat-bg-selected);
+    stroke: var(--seat-border-selected);
+}
+
+.seat-group.selected-by-you-active circle {
+    fill: var(--seat-bg-selected-active);
+    stroke: var(--seat-border-selected-active);
+    box-shadow: 0 0 15px rgba(255, 193, 7, 0.7);
+}
+
+.seat-group.unavailable circle, .seat-group.blocked circle {
+    fill: var(--seat-bg-unavailable);
+    stroke: var(--seat-border-unavailable);
+    opacity: 0.6;
+}
+
+.seat-group.unavailable, .seat-group.blocked {
+    cursor: not-allowed;
+}
+
+/* Legend Styles */
+.seatmap-legend {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    padding: 10px 0;
+    margin-bottom: 15px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    margin: 5px 10px;
+    font-size: 0.9em;
+}
+
+.legend-item .seat {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    margin-right: 8px;
+    border-radius: 4px;
+    border: 1px solid;
+}
+
+.legend-item .seat.available {
+    background-color: var(--seat-bg-available);
+    border-color: var(--seat-border-available);
+}
+
+.legend-item .seat.selected-by-you {
+    background-color: var(--seat-bg-selected);
+    border-color: var(--seat-border-selected);
+}
+
+.legend-item .seat.selected-by-you-active {
+    background-color: var(--seat-bg-selected-active);
+    border-color: var(--seat-border-selected-active);
+}
+
+.legend-item .seat.unavailable {
+    background-color: var(--seat-bg-unavailable);
+    border-color: var(--seat-border-unavailable);
+}
+
+/* General Layout */
+.card-header {
+    background-color: #f8f9fa;
+}
+
+#positions-list .list-group-item.active {
+    background-color: #007bff;
+    border-color: #007bff;
+    color: #fff;
+}
+#positions-list .list-group-item.active .text-muted {
+    color: #e9ecef !important;
+}
+
+.action-buttons {
+    display: flex;
+    justify-content: space-between;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .seat-group circle {
+        r: 12;
+    }
+
+    .seatmap-legend {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .legend-item {
+        margin-bottom: 10px;
+    }
+}

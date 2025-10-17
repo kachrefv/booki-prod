@@ -1,0 +1,3 @@
+[distutils.commands]
+build = pretix._build:CustomBuild
+build_ext = pretix._build:CustomBuildExt
