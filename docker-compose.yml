@@ -1,0 +1,29 @@
+services:
+  pretix:
+    build: .
+    container_name: pretix
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - pretix_data:/data
+    environment:
+      - PRETIX_CONFIG_FILE=/etc/pretix/pretix.cfg
+
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: pretix
+      POSTGRES_USER: pretix
+      POSTGRES_PASSWORD: pretix
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+
+volumes:
+  pretix_data:
+  postgres_data:
