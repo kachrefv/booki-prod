@@ -378,6 +378,7 @@ CSRF_COOKIE_NAME = 'pretix_csrftoken'
 SESSION_COOKIE_HTTPONLY = True
 
 INSTALLED_APPS += [ # noqa
+    'corsheaders',
     'django_filters',
     'django_markup',
     'django_otp',
@@ -445,6 +446,7 @@ MIDDLEWARE = [
     'pretix.api.middleware.IdempotencyMiddleware',
     'pretix.multidomain.middlewares.MultiDomainMiddleware',
     'pretix.base.middleware.CustomCommonMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'pretix.multidomain.middlewares.SessionMiddleware',
     'pretix.multidomain.middlewares.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -818,3 +820,4 @@ FILE_UPLOAD_MAX_SIZE_EMAIL_AUTO_ATTACHMENT = 1024 * 1024 * config.getint("pretix
 FILE_UPLOAD_MAX_SIZE_OTHER = 1024 * 1024 * config.getint("pretix_file_upload", "max_size_other", fallback=10)
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+CORS_ALLOW_ALL_ORIGINS = True
