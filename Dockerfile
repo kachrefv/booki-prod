@@ -29,7 +29,7 @@ RUN mkdir -p /etc/pretix /data /var/log/pretix
 COPY pretix.cfg /etc/pretix/pretix.cfg
 
 # Collect static files and migrate database
-RUN python src/manage.py migrate --noinput
+# RUN python src/manage.py migrate --noinput
 RUN python src/manage.py rebuild --noinput
 
 # Expose HTTP port

@@ -117,6 +117,9 @@ PDFTK = config.get('tools', 'pdftk', fallback=None)
 PRETIX_AUTH_BACKENDS = config.get('pretix', 'auth_backends', fallback='pretix.base.auth.NativeAuthBackend').split(',')
 
 db_backend = config.get('database', 'backend', fallback='sqlite3')
+if db_backend == 'sqlite':
+    db_backend = 'sqlite3'
+
 if db_backend == 'postgresql_psycopg2':
     db_backend = 'postgresql'
 elif 'mysql' in db_backend:
