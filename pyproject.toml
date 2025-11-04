@@ -94,7 +94,7 @@ dependencies = [
   "requests==2.31.*",
   "sentry-sdk==2.24.*",
   "sepaxml==2.6.*",
-  "stripe==7.9.*",
+  "stripe==13.1.*",
   "text-unidecode==1.*",
   "tlds>=2020041600",
   "tqdm==4.*",
